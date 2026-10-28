@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-ssr
+.git
+.gitignore
+.vscode
+.idea
+*.log
+*.local
+.env
+.env.*
+.DS_Store
+Thumbs.db
+

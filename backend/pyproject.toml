@@ -1,0 +1,12 @@
+[project]
+name = "helpdesk-ai-backend"
+version = "0.1.0"
+description = "FastAPI backend for Helpdesk AI with PostgreSQL & pgvector"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
