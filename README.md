@@ -128,5 +128,5 @@ cd backend
 ### Kiểm tra mã nguồn Frontend (Oxlint)
 ```powershell
 cd frontend
-npm run lint
+npm run dev
 ```
