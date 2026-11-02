@@ -35,6 +35,8 @@ def create_app() -> FastAPI:
         )
 
     application.include_router(api_router, prefix=settings.API_V1_STR)
+    if settings.API_V1_STR:
+        application.include_router(api_router, include_in_schema=False)
 
     @application.get("/", tags=["root"])
     async def root() -> dict[str, str]:

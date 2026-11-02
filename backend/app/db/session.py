@@ -25,10 +25,9 @@ AsyncSessionLocal = async_sessionmaker(
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency that yields an async SQLAlchemy database session."""
+    """FastAPI dependency cung cấp phiên làm việc bất đồng bộ (async session) với SQLAlchemy."""
     async with AsyncSessionLocal() as session:
         try:
             yield session
         finally:
             await session.close()
-

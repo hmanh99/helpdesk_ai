@@ -36,6 +36,16 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "helpdesk_ai"
     DATABASE_URL: str | None = None
 
+    # Security & Authentication
+    SECRET_KEY: str = "insecure-development-secret-key-please-change-in-production"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 hours default
+    ALGORITHM: str = "HS256"
+
+    # Initial Admin Bootstrap
+    ADMIN_EMAIL: str | None = None
+    ADMIN_PASSWORD: str | None = None
+    ADMIN_FULL_NAME: str | None = "System Administrator"
+
     BACKEND_CORS_ORIGINS: Annotated[
         list[AnyHttpUrl] | list[str], BeforeValidator(parse_cors)
     ] = [
