@@ -46,7 +46,12 @@ async def clean_db() -> AsyncGenerator[None, None]:
     """Clean all tables before each test to guarantee complete test isolation."""
     async with TestSessionLocal() as session:
         await session.execute(
-            text("TRUNCATE TABLE auth_audit_log, app_user, department RESTART IDENTITY CASCADE;")
+            text(
+                "TRUNCATE TABLE message_source, chat_message, chat_session, "
+                "ticket_comment, ticket_history, ai_classification, ticket, "
+                "knowledge_chunk, knowledge_document, category, auth_audit_log, "
+                "app_user, department RESTART IDENTITY CASCADE;"
+            )
         )
         await session.commit()
     yield

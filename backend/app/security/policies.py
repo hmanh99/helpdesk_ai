@@ -169,9 +169,29 @@ def can_manage_categories(user: AppUser) -> bool:
     return bool(user.is_active and user.role == UserRole.ADMIN)
 
 
-def can_manage_knowledge(user: AppUser) -> bool:
-    """Kiểm tra quyền quản lý cơ sở tri thức (Knowledge Base): Chỉ ADMIN."""
-    return bool(user.is_active and user.role == UserRole.ADMIN)
+def can_manage_knowledge(
+    user: AppUser, target_dept_id: Optional[uuid.UUID | str] = None
+) -> bool:
+    """Kiểm tra quyền quản lý kho tri thức (Knowledge Base):
+    - ADMIN: Toàn quyền trên mọi tài liệu/danh mục.
+    - DEPT_MANAGER: Có quyền thêm/sửa tài liệu. Nếu chỉ định target_dept_id,
+      chỉ được phép khi target_dept_id trùng với department_id của mình.
+    - Các vai trò khác: Không có quyền.
+    """
+    if not user.is_active:
+        return False
+
+    if user.role == UserRole.ADMIN:
+        return True
+
+    if user.role == UserRole.DEPT_MANAGER:
+        if target_dept_id is None:
+            return True
+        if user.department_id is None:
+            return False
+        return str(user.department_id) == str(target_dept_id)
+
+    return False
 
 
 def can_manage_users(user: AppUser) -> bool:
@@ -268,3 +288,17 @@ def resolve_user_list_department_scope(
         return True, current_user.department_id
 
     return False, None
+
+
+# can_manage_category alias cho can_manage_categories
+can_manage_category = can_manage_categories
+
+
+def can_access_chat_session(user: AppUser, session: Any) -> bool:
+    """Người dùng chỉ truy cập phiên chat của chính mình; ADMIN có quyền truy cập tất cả."""
+    if not user.is_active:
+        return False
+    if user.role == UserRole.ADMIN:
+        return True
+    session_user_id = getattr(session, "user_id", None)
+    return bool(session_user_id and str(session_user_id) == str(user.id))

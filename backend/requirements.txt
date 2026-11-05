@@ -12,3 +12,7 @@ pytest-asyncio>=0.24.0
 httpx>=0.28.0
 argon2-cffi>=23.1.0
 pyjwt>=2.10.0
+google-genai>=2.34.0
+pypdf>=6.0.0
+python-docx>=1.2.0
+tenacity>=9.0.0

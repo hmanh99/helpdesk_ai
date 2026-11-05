@@ -7,6 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
+    from app.models.category import Category
+    from app.models.ticket import Ticket
     from app.models.user import AppUser
 
 
@@ -24,6 +26,15 @@ class Department(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
+    email: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    is_active: Mapped[bool] = mapped_column(
+        default=True,
+        server_default="true",
+        nullable=False,
+    )
     description: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
@@ -32,6 +43,14 @@ class Department(Base, TimestampMixin):
     # Relationships
     members: Mapped[list["AppUser"]] = relationship(
         "AppUser",
+        back_populates="department",
+    )
+    categories: Mapped[list["Category"]] = relationship(
+        "Category",
+        back_populates="department",
+    )
+    tickets: Mapped[list["Ticket"]] = relationship(
+        "Ticket",
         back_populates="department",
     )
 
