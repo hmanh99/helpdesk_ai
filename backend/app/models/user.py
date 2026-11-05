@@ -17,7 +17,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
+    from app.models.chat import ChatSession
     from app.models.department import Department
+    from app.models.ticket import Ticket
 
 
 class UserRole(str, enum.Enum):
@@ -86,4 +88,18 @@ class AppUser(Base, TimestampMixin):
         "Department",
         back_populates="members",
         lazy="selectin",
+    )
+    tickets_requested: Mapped[list["Ticket"]] = relationship(
+        "Ticket",
+        foreign_keys="[Ticket.requester_id]",
+        back_populates="requester",
+    )
+    tickets_assigned: Mapped[list["Ticket"]] = relationship(
+        "Ticket",
+        foreign_keys="[Ticket.assignee_id]",
+        back_populates="assignee",
+    )
+    chat_sessions: Mapped[list["ChatSession"]] = relationship(
+        "ChatSession",
+        back_populates="user",
     )

@@ -200,14 +200,24 @@ def test_can_approve_agent_action() -> None:
 
 def test_admin_only_management_policies() -> None:
     admin = create_user(UserRole.ADMIN)
-    for role in [UserRole.STUDENT, UserRole.STAFF, UserRole.TECHNICIAN, UserRole.DEPT_MANAGER]:
+    for role in [UserRole.STUDENT, UserRole.STAFF, UserRole.TECHNICIAN]:
         other = create_user(role, department_id=uuid.uuid4())
         assert can_manage_categories(other) is False
         assert can_manage_knowledge(other) is False
         assert can_manage_users(other) is False
 
+    dept_a = uuid.uuid4()
+    dept_b = uuid.uuid4()
+    manager = create_user(UserRole.DEPT_MANAGER, department_id=dept_a)
+    assert can_manage_categories(manager) is False
+    assert can_manage_users(manager) is False
+    assert can_manage_knowledge(manager) is True
+    assert can_manage_knowledge(manager, target_dept_id=dept_a) is True
+    assert can_manage_knowledge(manager, target_dept_id=dept_b) is False
+
     assert can_manage_categories(admin) is True
     assert can_manage_knowledge(admin) is True
+    assert can_manage_knowledge(admin, target_dept_id=dept_b) is True
     assert can_manage_users(admin) is True
 
 

@@ -163,11 +163,19 @@ def main() -> None:
         "--full-name", help="Họ tên của tài khoản admin (mặc định: System Administrator)"
     )
 
+    subparsers.add_parser(
+        "seed-data", help="Khởi tạo dữ liệu mẫu (Phòng ban, Danh mục, Tri thức FAQ)"
+    )
+
     args = parser.parse_args()
 
     if args.command == "create-admin":
         code = asyncio.run(create_admin(args.email, args.password, args.full_name))
         sys.exit(code)
+    elif args.command == "seed-data":
+        from scripts.seed_data import seed_data
+        asyncio.run(seed_data())
+        sys.exit(0)
 
 
 if __name__ == "__main__":

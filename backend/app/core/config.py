@@ -46,6 +46,18 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str | None = None
     ADMIN_FULL_NAME: str | None = "System Administrator"
 
+    # AI & Google Gemini
+    GOOGLE_API_KEY: str | None = None
+    GEMINI_CHAT_MODEL: str = "gemini-3.5-flash-lite"
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
+    EMBEDDING_DIM: int = 768
+    LLM_TIMEOUT_SECONDS: int = 30
+    RAG_TOP_K: int = 5
+    RAG_MIN_SCORE: float = 0.55
+    INTENT_CONFIDENCE_THRESHOLD: float = 0.6
+    KNOWLEDGE_STORAGE_DIR: str = "storage/knowledge"
+    KNOWLEDGE_MAX_FILE_MB: int = 10
+
     BACKEND_CORS_ORIGINS: Annotated[
         list[AnyHttpUrl] | list[str], BeforeValidator(parse_cors)
     ] = [

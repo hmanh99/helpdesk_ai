@@ -31,8 +31,10 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# Docker / OS
-.DS_Store
+# Storage
+storage/
+backend/storage/
+
 Thumbs.db
 postgres_data/
 
