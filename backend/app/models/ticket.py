@@ -157,6 +157,7 @@ class Ticket(Base):
         back_populates="ticket",
         cascade="all, delete-orphan",
         order_by="TicketComment.created_at",
+        lazy="selectin",
     )
     classifications: Mapped[list["AIClassification"]] = relationship(
         "AIClassification",

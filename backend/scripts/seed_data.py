@@ -1,7 +1,10 @@
+import argparse
 import asyncio
 import logging
 from pathlib import Path
+import re
 import sys
+import unicodedata
 import uuid
 
 # Thêm đường dẫn backend vào sys.path
@@ -9,18 +12,177 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.chunking import chunk_text
 from app.api.deps import get_llm_client
+from app.core.security import hash_password
 from app.db.session import AsyncSessionLocal
 from app.models.category import Category
 from app.models.department import Department
 from app.models.enums import ProcessingStatus
 from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
+from app.models.user import AppUser, UserRole
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("seed_data")
+
+DEFAULT_SEED_PASSWORD = "Password123!"
+
+USERS_DATA = [
+    # Quản trị viên hệ thống (ADMIN)
+    {
+        "email": "admin@school.edu.vn",
+        "full_name": "Quản Trị Viên Hệ Thống (System Admin)",
+        "role": UserRole.ADMIN,
+        "dept_name": None,
+    },
+    {
+        "email": "admin.cntt@school.edu.vn",
+        "full_name": "Quản Trị Viên CNTT (Admin IT)",
+        "role": UserRole.ADMIN,
+        "dept_name": "Phòng Công nghệ Thông tin",
+    },
+    # Sinh viên chung (Người dùng tạo ticket & hỏi chatbot)
+    {
+        "email": "student@school.edu.vn",
+        "full_name": "Nguyễn Văn An (Sinh viên)",
+        "role": UserRole.STUDENT,
+        "dept_name": None,
+    },
+    # 1. Phòng Công nghệ Thông tin
+    {
+        "email": "manager.cntt@school.edu.vn",
+        "full_name": "Nguyễn Văn Quản (Trưởng phòng CNTT)",
+        "role": UserRole.DEPT_MANAGER,
+        "dept_name": "Phòng Công nghệ Thông tin",
+    },
+    {
+        "email": "tech.cntt@school.edu.vn",
+        "full_name": "Trần Kỹ Thuật (Kỹ thuật viên CNTT)",
+        "role": UserRole.TECHNICIAN,
+        "dept_name": "Phòng Công nghệ Thông tin",
+    },
+    {
+        "email": "tech2.cntt@school.edu.vn",
+        "full_name": "Lê Hỗ Trợ Mạng (Kỹ thuật viên CNTT)",
+        "role": UserRole.TECHNICIAN,
+        "dept_name": "Phòng Công nghệ Thông tin",
+    },
+    {
+        "email": "staff.cntt@school.edu.vn",
+        "full_name": "Phạm Cán Bộ (Chuyên viên CNTT)",
+        "role": UserRole.STAFF,
+        "dept_name": "Phòng Công nghệ Thông tin",
+    },
+    {
+        "email": "student.cntt@school.edu.vn",
+        "full_name": "Hoàng Sinh Viên (SV Khoa CNTT)",
+        "role": UserRole.STUDENT,
+        "dept_name": "Phòng Công nghệ Thông tin",
+    },
+    # 2. Phòng Đào tạo
+    {
+        "email": "manager.daotao@school.edu.vn",
+        "full_name": "Trần Văn Đào (Trưởng phòng Đào tạo)",
+        "role": UserRole.DEPT_MANAGER,
+        "dept_name": "Phòng Đào tạo",
+    },
+    {
+        "email": "tech.daotao@school.edu.vn",
+        "full_name": "Vũ Kỹ Thuật Điểm (Kỹ thuật viên Đào tạo)",
+        "role": UserRole.TECHNICIAN,
+        "dept_name": "Phòng Đào tạo",
+    },
+    {
+        "email": "staff.daotao@school.edu.vn",
+        "full_name": "Hoàng Thị Giáo Vụ (Chuyên viên Đào tạo)",
+        "role": UserRole.STAFF,
+        "dept_name": "Phòng Đào tạo",
+    },
+    {
+        "email": "student.daotao@school.edu.vn",
+        "full_name": "Đặng Sinh Viên (SV Đăng ký học phần)",
+        "role": UserRole.STUDENT,
+        "dept_name": "Phòng Đào tạo",
+    },
+    # 3. Phòng Công tác Sinh viên
+    {
+        "email": "manager.ctsv@school.edu.vn",
+        "full_name": "Lê Thị Tâm (Trưởng phòng CTSV)",
+        "role": UserRole.DEPT_MANAGER,
+        "dept_name": "Phòng Công tác Sinh viên",
+    },
+    {
+        "email": "tech.ctsv@school.edu.vn",
+        "full_name": "Đặng Kỹ Thuật KTX (Kỹ thuật viên KTX)",
+        "role": UserRole.TECHNICIAN,
+        "dept_name": "Phòng Công tác Sinh viên",
+    },
+    {
+        "email": "staff.ctsv@school.edu.vn",
+        "full_name": "Ngô Cán Bộ Học Bổng (Chuyên viên Học bổng)",
+        "role": UserRole.STAFF,
+        "dept_name": "Phòng Công tác Sinh viên",
+    },
+    {
+        "email": "student.ctsv@school.edu.vn",
+        "full_name": "Bùi Sinh Viên (SV Xin xác nhận & Học bổng)",
+        "role": UserRole.STUDENT,
+        "dept_name": "Phòng Công tác Sinh viên",
+    },
+    # 4. Phòng Cơ sở Vật chất
+    {
+        "email": "manager.csvc@school.edu.vn",
+        "full_name": "Phạm Quốc Cơ (Trưởng phòng CSVC)",
+        "role": UserRole.DEPT_MANAGER,
+        "dept_name": "Phòng Cơ sở Vật chất",
+    },
+    {
+        "email": "tech.csvc@school.edu.vn",
+        "full_name": "Bùi Văn Điện Nước (Kỹ thuật viên Điện nước)",
+        "role": UserRole.TECHNICIAN,
+        "dept_name": "Phòng Cơ sở Vật chất",
+    },
+    {
+        "email": "staff.csvc@school.edu.vn",
+        "full_name": "Đinh Thị Thiết Bị (Chuyên viên CSVC)",
+        "role": UserRole.STAFF,
+        "dept_name": "Phòng Cơ sở Vật chất",
+    },
+    {
+        "email": "student.csvc@school.edu.vn",
+        "full_name": "Trịnh Sinh Viên (SV Báo hỏng thiết bị)",
+        "role": UserRole.STUDENT,
+        "dept_name": "Phòng Cơ sở Vật chất",
+    },
+    # 5. Phòng Kế hoạch & Tài chính
+    {
+        "email": "manager.kttc@school.edu.vn",
+        "full_name": "Đỗ Kế Toán (Trưởng phòng KHTC)",
+        "role": UserRole.DEPT_MANAGER,
+        "dept_name": "Phòng Kế hoạch & Tài chính",
+    },
+    {
+        "email": "tech.kttc@school.edu.vn",
+        "full_name": "Phan Kỹ Thuật Hóa Đơn (Kỹ thuật viên KHTC)",
+        "role": UserRole.TECHNICIAN,
+        "dept_name": "Phòng Kế hoạch & Tài chính",
+    },
+    {
+        "email": "staff.kttc@school.edu.vn",
+        "full_name": "Trịnh Thu Ngân (Chuyên viên Thu học phí)",
+        "role": UserRole.STAFF,
+        "dept_name": "Phòng Kế hoạch & Tài chính",
+    },
+    {
+        "email": "student.kttc@school.edu.vn",
+        "full_name": "Dương Sinh Viên (SV Nộp học phí)",
+        "role": UserRole.STUDENT,
+        "dept_name": "Phòng Kế hoạch & Tài chính",
+    },
+]
 
 DEPARTMENTS_DATA = [
     {
@@ -394,9 +556,190 @@ async def seed_data() -> None:
 
         await session.commit()
 
+        # 4. Thêm tài khoản người dùng mẫu cho các phòng ban đầy đủ các role
+        created_users = await seed_users(session)
+        logger.info("Đã tạo/cập nhật %d người dùng mẫu cho các phòng ban.", len(created_users))
+
     logger.info("Hoàn tất khởi tạo dữ liệu mẫu thành công!")
 
 
+def _slugify(text: str) -> str:
+    nfkd = unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("utf-8")
+    cleaned = re.sub(r"[^a-zA-Z0-9]+", "", nfkd.lower())
+    return cleaned[:10] if cleaned else "dept"
+
+
+async def seed_users(
+    session: AsyncSession, password: str = DEFAULT_SEED_PASSWORD
+) -> list[AppUser]:
+    """Khởi tạo tài khoản người dùng mẫu cho các phòng ban với đầy đủ các role:
+    ADMIN, DEPT_MANAGER, TECHNICIAN, STAFF, STUDENT.
+    Hàm có tính chất idempotent (có thể chạy nhiều lần an toàn).
+    """
+    logger.info("Bắt đầu khởi tạo tài khoản người dùng mẫu cho các phòng ban...")
+    pw_hash = hash_password(password)
+
+    # Lấy toàn bộ phòng ban hiện có trong DB
+    dept_stmt = select(Department)
+    dept_rows = (await session.execute(dept_stmt)).scalars().all()
+    dept_map = {d.name: d for d in dept_rows}
+
+    created_or_updated: list[AppUser] = []
+
+    # 1. Thêm/cập nhật danh sách người dùng mẫu cấu hình sẵn
+    for u_info in USERS_DATA:
+        dept = None
+        dept_name = u_info.get("dept_name")
+        if dept_name:
+            dept = dept_map.get(dept_name)
+            if dept is None:
+                dept = Department(
+                    name=dept_name,
+                    description=f"Bộ phận {dept_name}",
+                    email=f"{_slugify(dept_name)}@school.edu.vn",
+                    is_active=True,
+                )
+                session.add(dept)
+                await session.flush()
+                dept_map[dept.name] = dept
+                dept_rows.append(dept)
+                logger.info("Tự động tạo phòng ban theo seed user: %s", dept.name)
+
+        email_clean = u_info["email"].strip().lower()
+
+        res = await session.execute(
+            select(AppUser).where(func.lower(AppUser.email) == email_clean)
+        )
+        user = res.scalar_one_or_none()
+        if user is None:
+            user = AppUser(
+                email=email_clean,
+                full_name=u_info["full_name"],
+                role=u_info["role"],
+                department_id=dept.id if dept else None,
+                password_hash=pw_hash,
+                is_active=True,
+            )
+            session.add(user)
+            logger.info(
+                "Tạo mới user: %s [%s] (%s)",
+                user.email,
+                user.role.value,
+                u_info["dept_name"] or "None",
+            )
+        else:
+            user.full_name = u_info["full_name"]
+            user.role = u_info["role"]
+            user.department_id = dept.id if dept else None
+            user.password_hash = pw_hash
+            user.is_active = True
+            logger.info(
+                "Cập nhật user: %s [%s] (%s)",
+                user.email,
+                user.role.value,
+                u_info["dept_name"] or "None",
+            )
+
+        await session.flush()
+        created_or_updated.append(user)
+
+    # 2. Đảm bảo TẤT CẢ các phòng ban trong hệ thống đều có đủ 4 role: DEPT_MANAGER, TECHNICIAN, STAFF, STUDENT
+    ROLE_TEMPLATE = [
+        (UserRole.DEPT_MANAGER, "manager", "Trưởng phòng"),
+        (UserRole.TECHNICIAN, "tech", "Kỹ thuật viên"),
+        (UserRole.STAFF, "staff", "Chuyên viên"),
+        (UserRole.STUDENT, "student", "Sinh viên"),
+    ]
+
+    for dept in dept_rows:
+        slug = _slugify(dept.name)
+        for role, prefix, title_vn in ROLE_TEMPLATE:
+            # Kiểm tra xem phòng ban này đã có tài khoản role tương ứng chưa
+            check_stmt = select(AppUser).where(
+                AppUser.department_id == dept.id,
+                AppUser.role == role,
+            )
+            existing = (await session.execute(check_stmt)).scalars().first()
+            if existing is None:
+                auto_email = f"{prefix}.{slug}@school.edu.vn"
+                user_res = await session.execute(
+                    select(AppUser).where(func.lower(AppUser.email) == auto_email)
+                )
+                user = user_res.scalar_one_or_none()
+                if user is None:
+                    user = AppUser(
+                        email=auto_email,
+                        full_name=f"{title_vn} - {dept.name}",
+                        role=role,
+                        department_id=dept.id,
+                        password_hash=pw_hash,
+                        is_active=True,
+                    )
+                    session.add(user)
+                    await session.flush()
+                    created_or_updated.append(user)
+                    logger.info(
+                        "Bổ sung user còn thiếu: %s [%s] (Dept: %s)",
+                        user.email,
+                        user.role.value,
+                        dept.name,
+                    )
+                else:
+                    if user not in created_or_updated:
+                        created_or_updated.append(user)
+            else:
+                if existing not in created_or_updated:
+                    created_or_updated.append(existing)
+
+    await session.commit()
+    logger.info(
+        "Khởi tạo hoàn tất tổng cộng %d tài khoản người dùng mẫu.",
+        len(created_or_updated),
+    )
+    return created_or_updated
+
+
+async def seed_users_standalone(password: str = DEFAULT_SEED_PASSWORD) -> None:
+    from app.db.session import engine
+
+    try:
+        async with AsyncSessionLocal() as session:
+            depts = (await session.execute(select(Department))).scalars().all()
+            dept_id_to_name = {d.id: d.name for d in depts}
+
+            users = await seed_users(session, password=password)
+            print("\n" + "=" * 96)
+            print(f"{'DANH SÁCH TÀI KHOẢN SEED CHO CÁC PHÒNG BAN':^96}")
+            print("=" * 96)
+            print(f"{'Email':<32} | {'Vai trò':<14} | {'Phòng ban':<26} | {'Họ tên':<20}")
+            print("-" * 96)
+            for u in users:
+                dept_name = dept_id_to_name.get(u.department_id, "(Toàn hệ thống)")
+                print(
+                    f"{u.email:<32} | {u.role.value:<14} | {dept_name[:26]:<26} | {u.full_name[:20]}"
+                )
+            print("=" * 96)
+            print(f"Mật khẩu mặc định cho tất cả tài khoản: {password}\n")
+    finally:
+        await engine.dispose()
+
+
 if __name__ == "__main__":
-    asyncio.run(seed_data())
+    parser = argparse.ArgumentParser(description="Seed data for Helpdesk AI")
+    parser.add_argument(
+        "--users-only",
+        action="store_true",
+        help="Chỉ khởi tạo tài khoản người dùng cho các phòng ban",
+    )
+    parser.add_argument(
+        "--password",
+        default=DEFAULT_SEED_PASSWORD,
+        help="Mật khẩu mặc định cho seed users (mặc định: Password123!)",
+    )
+    args = parser.parse_args()
+
+    if args.users_only:
+        asyncio.run(seed_users_standalone(password=args.password))
+    else:
+        asyncio.run(seed_data())
 
