@@ -26,6 +26,38 @@ class TicketUpdate(BaseModel):
     status: Optional[TicketStatus] = None
 
 
+class TicketAcceptRequest(BaseModel):
+    note: Optional[str] = Field(None, max_length=500, description="Ghi chú khi tiếp nhận phiếu hỗ trợ")
+
+
+class TicketAssignRequest(BaseModel):
+    assignee_id: uuid.UUID = Field(..., description="ID của kỹ thuật viên được phân công")
+    note: Optional[str] = Field(None, max_length=500, description="Ghi chú phân công công việc")
+
+
+class TicketStatusUpdateRequest(BaseModel):
+    status: TicketStatus = Field(..., description="Trạng thái mới của ticket")
+    note: Optional[str] = Field(None, max_length=1000, description="Ghi chú lý do thay đổi trạng thái hoặc hướng dẫn giải quyết")
+
+
+class TicketCommentCreate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=5000, description="Nội dung phản hồi hoặc hướng dẫn xử lý")
+    is_internal: bool = Field(default=False, description="Ghi chú nội bộ dành riêng cho cán bộ phòng ban")
+
+
+class TicketCommentResponse(BaseModel):
+    id: uuid.UUID
+    ticket_id: uuid.UUID
+    author_id: uuid.UUID
+    author_name: Optional[str] = None
+    author_role: Optional[str] = None
+    content: str
+    is_internal: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TicketHistoryResponse(BaseModel):
     id: uuid.UUID
     old_status: Optional[str] = None
@@ -69,6 +101,7 @@ class TicketResponse(BaseModel):
     created_at: datetime
     resolved_at: Optional[datetime] = None
     histories: list[TicketHistoryResponse] = []
+    comments: list[TicketCommentResponse] = []
     classification: Optional[AIClassificationResponse] = None
 
     model_config = ConfigDict(from_attributes=True)

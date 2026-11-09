@@ -164,7 +164,16 @@ def main() -> None:
     )
 
     subparsers.add_parser(
-        "seed-data", help="Khởi tạo dữ liệu mẫu (Phòng ban, Danh mục, Tri thức FAQ)"
+        "seed-data", help="Khởi tạo dữ liệu mẫu (Phòng ban, Danh mục, Tri thức FAQ, Người dùng)"
+    )
+
+    seed_users_parser = subparsers.add_parser(
+        "seed-users", help="Khởi tạo người dùng mẫu cho các phòng ban đầy đủ các role"
+    )
+    seed_users_parser.add_argument(
+        "--password",
+        default="Password123!",
+        help="Mật khẩu mặc định cho các tài khoản seed (mặc định: Password123!)",
     )
 
     args = parser.parse_args()
@@ -175,6 +184,10 @@ def main() -> None:
     elif args.command == "seed-data":
         from scripts.seed_data import seed_data
         asyncio.run(seed_data())
+        sys.exit(0)
+    elif args.command == "seed-users":
+        from scripts.seed_data import seed_users_standalone
+        asyncio.run(seed_users_standalone(password=args.password))
         sys.exit(0)
 
 

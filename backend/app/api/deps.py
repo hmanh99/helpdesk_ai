@@ -104,6 +104,7 @@ def get_ticket_service(
         CategoryRepository(db),
         DepartmentRepository(db),
         classifier_service,
+        UserRepository(db),
     )
 
 
