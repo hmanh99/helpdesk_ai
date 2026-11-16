@@ -258,9 +258,55 @@ def can_manage_knowledge(
     return False
 
 
+def is_hr_department(department: Any) -> bool:
+    """Kiểm tra phòng ban có phải là bộ phận Nhân sự / Tổ chức cán bộ hay không."""
+    if department is None:
+        return False
+    name = getattr(department, "name", "") or ""
+    name_clean = name.strip().lower()
+    keywords = ["nhân sự", "nhan su", "tổ chức", "to chuc", "tccb", "hr", "human resource"]
+    return any(kw in name_clean for kw in keywords)
+
+
+def is_hr_manager(user: AppUser) -> bool:
+    """Kiểm tra người dùng có phải là Trưởng bộ phận Nhân sự hay không."""
+    if not user.is_active or user.role != UserRole.DEPT_MANAGER:
+        return False
+    return is_hr_department(user.department)
+
+
 def can_manage_users(user: AppUser) -> bool:
-    """Kiểm tra quyền quản trị người dùng: Chỉ ADMIN."""
-    return bool(user.is_active and user.role == UserRole.ADMIN)
+    """Kiểm tra quyền quản trị người dùng: ADMIN hoặc Trưởng bộ phận nhân sự."""
+    return bool(user.is_active and (user.role == UserRole.ADMIN or is_hr_manager(user)))
+
+
+def can_edit_user_role(
+    actor: AppUser,
+    target_user: Any,
+    new_role: Optional[UserRole] = None,
+) -> bool:
+    """Kiểm tra quyền thay đổi chức vụ / vai trò của người dùng:
+    - ADMIN: Toàn quyền sửa chức vụ của mọi người dùng.
+    - Trưởng bộ phận nhân sự (HR Manager): Được phép sửa chức vụ của người dùng khác.
+      (Ràng buộc an toàn: Không được sửa tài khoản ADMIN, không được phong ADMIN).
+    """
+    if not actor.is_active:
+        return False
+
+    if actor.role == UserRole.ADMIN:
+        return True
+
+    if is_hr_manager(actor):
+        target_role = getattr(target_user, "role", None)
+        # Không được phép hạ quyền hoặc sửa tài khoản ADMIN
+        if target_role == UserRole.ADMIN:
+            return False
+        # Không được phép nâng người dùng lên quyền ADMIN
+        if new_role == UserRole.ADMIN:
+            return False
+        return True
+
+    return False
 
 
 def can_view_internal_comments(user: AppUser, ticket: Any = None) -> bool:

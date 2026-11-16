@@ -1,7 +1,7 @@
 from typing import Annotated, Optional
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.api.deps import CurrentUserDep, UserServiceDep, require_roles
 from app.models.user import AppUser, UserRole
@@ -11,24 +11,40 @@ from app.schemas.user import (
     UserResponse,
     UserUpdate,
 )
+from app.security.deps import get_current_user
+from app.security.policies import can_manage_users
 
 router = APIRouter()
 
 AdminOnlyDep = Annotated[AppUser, Depends(require_roles(UserRole.ADMIN))]
 
 
+async def require_admin_or_hr_manager(
+    current_user: Annotated[AppUser, Depends(get_current_user)],
+) -> AppUser:
+    if not can_manage_users(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Yêu cầu quyền ADMIN hoặc Trưởng bộ phận nhân sự",
+        )
+    return current_user
+
+
+AdminOrHRManagerDep = Annotated[AppUser, Depends(require_admin_or_hr_manager)]
+
+
 @router.get(
     "",
     response_model=list[UserResponse],
     summary="Danh sách người dùng",
-    description="Lấy danh sách người dùng có phân trang và bộ lọc. Chỉ dành cho quyền ADMIN.",
+    description="Lấy danh sách người dùng có phân trang và bộ lọc. Dành cho quyền ADMIN hoặc Trưởng bộ phận nhân sự.",
     responses={
         401: {"description": "Yêu cầu xác thực"},
-        403: {"description": "Yêu cầu quyền ADMIN"},
+        403: {"description": "Yêu cầu quyền ADMIN hoặc Trưởng bộ phận nhân sự"},
     },
 )
 async def list_users(
-    current_user: AdminOnlyDep,
+    current_user: AdminOrHRManagerDep,
     user_service: UserServiceDep,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),

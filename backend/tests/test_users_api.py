@@ -357,3 +357,78 @@ async def test_patch_user_department_null_handling(
     assert data["role"] == "STAFF"
     assert data["department_id"] is None
 
+
+@pytest.mark.asyncio
+async def test_hr_manager_can_list_users_and_edit_roles(
+    client: AsyncClient,
+    db: AsyncSession,
+    dept_a: Department,
+    student_user: AppUser,
+    admin_user: AppUser,
+) -> None:
+    # 1. Create HR Department and HR Manager
+    hr_dept = Department(
+        name="Phòng Tổ chức - Cán bộ (Nhân sự)",
+        description="Bộ phận nhân sự",
+    )
+    db.add(hr_dept)
+    await db.flush()
+
+    hr_manager = AppUser(
+        email="hr.manager@example.com",
+        full_name="Trưởng Phòng Nhân Sự",
+        role=UserRole.DEPT_MANAGER,
+        department_id=hr_dept.id,
+        password_hash=hash_password("Password123!"),
+        is_active=True,
+    )
+    db.add(hr_manager)
+    await db.commit()
+    await db.refresh(hr_manager)
+
+    hr_headers = auth_headers_for(hr_manager)
+
+    # 2. HR Manager can list users
+    list_res = await client.get("/api/v1/users", headers=hr_headers)
+    assert list_res.status_code == 200
+    users_data = list_res.json()
+    assert len(users_data) > 0
+
+    # 3. HR Manager can edit a student's role to TECHNICIAN
+    edit_res = await client.patch(
+        f"/api/v1/users/{student_user.id}",
+        headers=hr_headers,
+        json={"role": "TECHNICIAN", "department_id": str(dept_a.id)},
+    )
+    assert edit_res.status_code == 200
+    assert edit_res.json()["role"] == "TECHNICIAN"
+
+    # 4. HR Manager cannot promote someone to ADMIN -> 403
+    promote_admin_res = await client.patch(
+        f"/api/v1/users/{student_user.id}",
+        headers=hr_headers,
+        json={"role": "ADMIN"},
+    )
+    assert promote_admin_res.status_code == 403
+
+    # 5. HR Manager cannot edit an ADMIN's role -> 403
+    edit_admin_res = await client.patch(
+        f"/api/v1/users/{admin_user.id}",
+        headers=hr_headers,
+        json={"role": "STAFF"},
+    )
+    assert edit_admin_res.status_code == 403
+
+    # 6. HR Manager cannot toggle is_active -> 403
+    deactivate_res = await client.patch(
+        f"/api/v1/users/{student_user.id}",
+        headers=hr_headers,
+        json={"is_active": False},
+    )
+    assert deactivate_res.status_code == 403
+
+    # 7. Student cannot edit roles or list users
+    student_headers = auth_headers_for(student_user)
+    student_list_res = await client.get("/api/v1/users", headers=student_headers)
+    assert student_list_res.status_code == 403
+
