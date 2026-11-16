@@ -13,7 +13,9 @@ from app.schemas.category import CategoryCreate, CategoryResponse, CategoryUpdat
 
 router = APIRouter()
 
-AdminOnlyDep = Annotated[AppUser, Depends(require_roles(UserRole.ADMIN))]
+AdminOrManagerDep = Annotated[
+    AppUser, Depends(require_roles(UserRole.ADMIN, UserRole.DEPT_MANAGER))
+]
 
 
 @router.get("", response_model=list[CategoryResponse])
@@ -44,28 +46,28 @@ async def get_category(
 
 @router.post("", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
 async def create_category(
-    current_admin: AdminOnlyDep,
+    current_user: AdminOrManagerDep,
     body: CategoryCreate,
     category_service: CategoryServiceDep,
 ) -> CategoryResponse:
-    return await category_service.create_category(body, current_admin)
+    return await category_service.create_category(body, current_user)
 
 
 @router.patch("/{id}", response_model=CategoryResponse)
 async def update_category(
-    current_admin: AdminOnlyDep,
+    current_user: AdminOrManagerDep,
     id: uuid.UUID,
     body: CategoryUpdate,
     category_service: CategoryServiceDep,
 ) -> CategoryResponse:
-    return await category_service.update_category(id, body, current_admin)
+    return await category_service.update_category(id, body, current_user)
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_category(
-    current_admin: AdminOnlyDep,
+    current_user: AdminOrManagerDep,
     id: uuid.UUID,
     category_service: CategoryServiceDep,
 ) -> None:
-    await category_service.delete_category(id, current_admin)
+    await category_service.delete_category(id, current_user)
 

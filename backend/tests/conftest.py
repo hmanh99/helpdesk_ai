@@ -94,7 +94,7 @@ async def dept_b(db: AsyncSession) -> Department:
 @pytest_asyncio.fixture
 async def admin_user(db: AsyncSession) -> AppUser:
     user = AppUser(
-        email="admin@example.com",
+        email="admin@st.neu.edu.vn",
         full_name="Admin User",
         role=UserRole.ADMIN,
         password_hash=hash_password("Password123!"),
@@ -109,7 +109,7 @@ async def admin_user(db: AsyncSession) -> AppUser:
 @pytest_asyncio.fixture
 async def dept_manager_a(db: AsyncSession, dept_a: Department) -> AppUser:
     user = AppUser(
-        email="manager.a@example.com",
+        email="manager.a@st.neu.edu.vn",
         full_name="Manager A",
         role=UserRole.DEPT_MANAGER,
         department_id=dept_a.id,
@@ -125,7 +125,7 @@ async def dept_manager_a(db: AsyncSession, dept_a: Department) -> AppUser:
 @pytest_asyncio.fixture
 async def dept_manager_b(db: AsyncSession, dept_b: Department) -> AppUser:
     user = AppUser(
-        email="manager.b@example.com",
+        email="manager.b@st.neu.edu.vn",
         full_name="Manager B",
         role=UserRole.DEPT_MANAGER,
         department_id=dept_b.id,
@@ -141,7 +141,7 @@ async def dept_manager_b(db: AsyncSession, dept_b: Department) -> AppUser:
 @pytest_asyncio.fixture
 async def tech_user_a(db: AsyncSession, dept_a: Department) -> AppUser:
     user = AppUser(
-        email="tech.a@example.com",
+        email="tech.a@st.neu.edu.vn",
         full_name="Tech A",
         role=UserRole.TECHNICIAN,
         department_id=dept_a.id,
@@ -157,7 +157,7 @@ async def tech_user_a(db: AsyncSession, dept_a: Department) -> AppUser:
 @pytest_asyncio.fixture
 async def staff_user(db: AsyncSession) -> AppUser:
     user = AppUser(
-        email="staff@example.com",
+        email="staff@st.neu.edu.vn",
         full_name="Staff User",
         role=UserRole.STAFF,
         password_hash=hash_password("Password123!"),
@@ -172,7 +172,7 @@ async def staff_user(db: AsyncSession) -> AppUser:
 @pytest_asyncio.fixture
 async def student_user(db: AsyncSession) -> AppUser:
     user = AppUser(
-        email="student@example.com",
+        email="student@st.neu.edu.vn",
         full_name="Student User",
         role=UserRole.STUDENT,
         password_hash=hash_password("Password123!"),

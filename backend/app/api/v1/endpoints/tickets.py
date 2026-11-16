@@ -12,6 +12,7 @@ from app.schemas.ticket import (
     TicketCreate,
     TicketResponse,
     TicketStatusUpdateRequest,
+    TicketUpdate,
 )
 
 router = APIRouter()
@@ -93,6 +94,27 @@ async def update_ticket_status(
 ) -> TicketResponse:
     """Cập nhật trạng thái phiếu hỗ trợ (IN_PROGRESS, PENDING_USER, RESOLVED, CLOSED, CANCELLED)."""
     return await ticket_service.update_status(id, body, current_user)
+
+
+@router.patch("/{id}", response_model=TicketResponse)
+async def update_ticket(
+    id: uuid.UUID,
+    body: TicketUpdate,
+    current_user: CurrentUserDep,
+    ticket_service: TicketServiceDep,
+) -> TicketResponse:
+    """Chỉnh sửa thông tin phiếu hỗ trợ (tiêu đề, nội dung, danh mục, mức ưu tiên). Dành cho người tạo phiếu hoặc ADMIN."""
+    return await ticket_service.update_ticket(id, body, current_user)
+
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_ticket(
+    id: uuid.UUID,
+    current_user: CurrentUserDep,
+    ticket_service: TicketServiceDep,
+) -> None:
+    """Xóa phiếu hỗ trợ. Dành cho người tạo phiếu hoặc ADMIN."""
+    await ticket_service.delete_ticket(id, current_user)
 
 
 @router.get("/{id}/comments", response_model=list[TicketCommentResponse])

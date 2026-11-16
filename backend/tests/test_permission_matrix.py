@@ -36,7 +36,7 @@ POLICY_MATRIX = [
     ("accept_ticket", False, False, True, True, True),
     ("reassign_ticket", False, False, False, True, True),
     ("approve_agent_action", False, False, False, True, True),
-    ("manage_categories", False, False, False, False, True),
+    ("manage_categories", False, False, False, True, True),
     ("manage_knowledge", False, False, False, True, True),
     ("manage_users", False, False, False, False, True),
     ("view_internal_comments", False, False, True, True, True),

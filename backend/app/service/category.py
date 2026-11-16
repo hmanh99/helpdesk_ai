@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
 from app.models.category import Category
-from app.models.user import AppUser
+from app.models.user import AppUser, UserRole
 from app.repo.category import CategoryRepository
 from app.repo.department import DepartmentRepository
 from app.schemas.category import CategoryCreate, CategoryResponse, CategoryUpdate
@@ -41,10 +41,10 @@ class CategoryService:
     async def create_category(
         self, body: CategoryCreate, current_user: AppUser
     ) -> CategoryResponse:
-        if not can_manage_category(current_user):
+        if not can_manage_category(current_user, target_dept_id=body.department_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Chỉ Quản trị viên (ADMIN) mới có quyền tạo danh mục",
+                detail="Bạn không có quyền tạo danh mục cho phòng ban này",
             )
 
         dept = await self.dept_repo.get_by_id(body.department_id)
@@ -112,12 +112,6 @@ class CategoryService:
         body: CategoryUpdate,
         current_user: AppUser,
     ) -> CategoryResponse:
-        if not can_manage_category(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Chỉ Quản trị viên (ADMIN) mới có quyền cập nhật danh mục",
-            )
-
         category = await self.category_repo.get_by_id(category_id)
         if category is None:
             raise HTTPException(
@@ -125,7 +119,18 @@ class CategoryService:
                 detail="Không tìm thấy danh mục",
             )
 
-        if body.department_id is not None:
+        if not can_manage_category(current_user, target_dept_id=category.department_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cập nhật danh mục thuộc phòng ban này",
+            )
+
+        if body.department_id is not None and body.department_id != category.department_id:
+            if current_user.role != UserRole.ADMIN:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Chỉ Quản trị viên mới có quyền chuyển danh mục sang phòng ban khác",
+                )
             dept = await self.dept_repo.get_by_id(body.department_id)
             if dept is None:
                 raise HTTPException(
@@ -169,17 +174,17 @@ class CategoryService:
         category_id: uuid.UUID,
         current_user: AppUser,
     ) -> None:
-        if not can_manage_category(current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Chỉ Quản trị viên (ADMIN) mới có quyền xóa danh mục",
-            )
-
         category = await self.category_repo.get_by_id(category_id)
         if category is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Không tìm thấy danh mục",
+            )
+
+        if not can_manage_category(current_user, target_dept_id=category.department_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền xóa danh mục thuộc phòng ban này",
             )
 
         await self.category_repo.delete(category)

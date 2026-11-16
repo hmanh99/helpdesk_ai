@@ -205,3 +205,54 @@ async def test_feedback_unresolved_drafts_ticket(
     assert fb_data["suggest_ticket"] is True
     assert fb_data["ticket_draft"]["title"] == "Chưa kết nối được wifi sau khi làm theo hướng dẫn"
 
+
+@pytest.mark.asyncio
+async def test_rename_and_delete_chat_session(
+    client: AsyncClient,
+    student_user: AppUser,
+    staff_user: AppUser,
+) -> None:
+    headers_student = auth_headers_for(student_user)
+    headers_staff = auth_headers_for(staff_user)
+
+    # 1. Tạo session
+    res = await client.post("/api/v1/chat/sessions", headers=headers_student)
+    assert res.status_code == 201
+    session_id = res.json()["id"]
+
+    # 2. Đổi tên session thành công
+    rename_res = await client.patch(
+        f"/api/v1/chat/sessions/{session_id}",
+        json={"title": "Hỏi đáp thủ tục học phí"},
+        headers=headers_student,
+    )
+    assert rename_res.status_code == 200
+    assert rename_res.json()["title"] == "Hỏi đáp thủ tục học phí"
+
+    # 3. Người dùng khác (staff) không được đổi tên
+    rename_other = await client.patch(
+        f"/api/v1/chat/sessions/{session_id}",
+        json={"title": "Tên lậu"},
+        headers=headers_staff,
+    )
+    assert rename_other.status_code == 403
+
+    # 4. Người dùng khác (staff) không được xóa
+    del_other = await client.delete(
+        f"/api/v1/chat/sessions/{session_id}",
+        headers=headers_staff,
+    )
+    assert del_other.status_code == 403
+
+    # 5. Chủ sở hữu xóa session thành công
+    del_res = await client.delete(
+        f"/api/v1/chat/sessions/{session_id}",
+        headers=headers_student,
+    )
+    assert del_res.status_code == 200
+
+    # 6. Truy cập session đã xóa -> 404
+    get_res = await client.get(f"/api/v1/chat/sessions/{session_id}", headers=headers_student)
+    assert get_res.status_code == 404
+
+

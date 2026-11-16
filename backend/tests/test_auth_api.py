@@ -16,13 +16,13 @@ from tests.conftest import auth_headers_for
 async def test_login_success(client: AsyncClient, admin_user: AppUser, db: AsyncSession) -> None:
     response = await client.post(
         "/api/v1/auth/login",
-        json={"email": "admin@example.com", "password": "Password123!"},
+        json={"email": "admin@st.neu.edu.vn", "password": "Password123!"},
     )
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
     assert data["token_type"] == "bearer"
-    assert data["user"]["email"] == "admin@example.com"
+    assert data["user"]["email"] == "admin@st.neu.edu.vn"
     assert data["user"]["role"] == "ADMIN"
 
     # Verify last_login_at is updated
@@ -45,18 +45,18 @@ async def test_login_success(client: AsyncClient, admin_user: AppUser, db: Async
 async def test_login_case_insensitive(client: AsyncClient, admin_user: AppUser) -> None:
     response = await client.post(
         "/api/v1/auth/login",
-        json={"email": "ADMIN@EXAMPLE.COM", "password": "Password123!"},
+        json={"email": "ADMIN@ST.NEU.EDU.VN", "password": "Password123!"},
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["user"]["email"] == "admin@example.com"
+    assert data["user"]["email"] == "admin@st.neu.edu.vn"
 
 
 @pytest.mark.asyncio
 async def test_login_wrong_password(client: AsyncClient, admin_user: AppUser, db: AsyncSession) -> None:
     response = await client.post(
         "/api/v1/auth/login",
-        json={"email": "admin@example.com", "password": "WrongPassword!"},
+        json={"email": "admin@st.neu.edu.vn", "password": "WrongPassword!"},
     )
     assert response.status_code == 401
     data = response.json()
@@ -77,7 +77,7 @@ async def test_login_wrong_password(client: AsyncClient, admin_user: AppUser, db
 async def test_login_unknown_email(client: AsyncClient, db: AsyncSession) -> None:
     response = await client.post(
         "/api/v1/auth/login",
-        json={"email": "nonexistent@example.com", "password": "Password123!"},
+        json={"email": "nonexistent@st.neu.edu.vn", "password": "Password123!"},
     )
     assert response.status_code == 401
     data = response.json()
@@ -87,7 +87,7 @@ async def test_login_unknown_email(client: AsyncClient, db: AsyncSession) -> Non
     # Verify audit log recorded LOGIN_FAILED with email_attempted
     audit_res = await db.execute(
         select(AuthAuditLog).where(
-            AuthAuditLog.email_attempted == "nonexistent@example.com",
+            AuthAuditLog.email_attempted == "nonexistent@st.neu.edu.vn",
             AuthAuditLog.event == AuditEvent.LOGIN_FAILED.value,
         )
     )
@@ -253,14 +253,14 @@ async def test_register_flow(client: AsyncClient, db: AsyncSession) -> None:
     res = await client.post(
         "/api/v1/auth/register",
         json={
-            "email": "newbie@example.com",
+            "email": "newbie@st.neu.edu.vn",
             "full_name": "New User",
             "password": "Password123!",
         },
     )
     assert res.status_code == 201
     data = res.json()
-    assert data["email"] == "newbie@example.com"
+    assert data["email"] == "newbie@st.neu.edu.vn"
     assert data["full_name"] == "New User"
     assert data["role"] == "STUDENT"
     assert data["is_active"] is True
@@ -269,7 +269,7 @@ async def test_register_flow(client: AsyncClient, db: AsyncSession) -> None:
     res_dup = await client.post(
         "/api/v1/auth/register",
         json={
-            "email": "NEWBIE@EXAMPLE.COM",
+            "email": "NEWBIE@ST.NEU.EDU.VN",
             "full_name": "Another User",
             "password": "Password123!",
         },
@@ -279,9 +279,33 @@ async def test_register_flow(client: AsyncClient, db: AsyncSession) -> None:
     # 3. Log in with newly registered account
     login_res = await client.post(
         "/api/v1/auth/login",
-        json={"email": "newbie@example.com", "password": "Password123!"},
+        json={"email": "newbie@st.neu.edu.vn", "password": "Password123!"},
     )
     assert login_res.status_code == 200
     assert "access_token" in login_res.json()
+
+
+@pytest.mark.asyncio
+async def test_register_invalid_email_domain(client: AsyncClient) -> None:
+    res = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "student@gmail.com",
+            "full_name": "Invalid Domain User",
+            "password": "Password123!",
+        },
+    )
+    assert res.status_code == 400
+    assert "@st.neu.edu.vn" in res.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_login_invalid_email_domain(client: AsyncClient) -> None:
+    res = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "student@gmail.com", "password": "Password123!"},
+    )
+    assert res.status_code == 400
+    assert "@st.neu.edu.vn" in res.json()["detail"]
 
 

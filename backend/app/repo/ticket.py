@@ -99,6 +99,9 @@ class TicketRepository(BaseRepository):
         self.db.add(ticket)
         return ticket
 
+    async def delete_ticket(self, ticket: Ticket) -> None:
+        await self.db.delete(ticket)
+
     async def add_history(self, history: TicketHistory) -> TicketHistory:
         self.db.add(history)
         return history
