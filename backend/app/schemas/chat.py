@@ -33,6 +33,7 @@ class ChatMessageResponse(BaseModel):
 class ChatSessionResponse(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
+    title: Optional[str] = None
     started_at: datetime
     ended_at: Optional[datetime] = None
     is_resolved_by_bot: Optional[bool] = None
@@ -40,6 +41,10 @@ class ChatSessionResponse(BaseModel):
     ticket_id: Optional[uuid.UUID] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UpdateChatSessionRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255, description="Tiêu đề đoạn chat mới")
 
 
 class ChatSessionDetailResponse(BaseModel):

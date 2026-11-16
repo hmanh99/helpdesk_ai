@@ -71,6 +71,7 @@ class ChatService:
         return ChatSessionResponse(
             id=session.id,
             user_id=session.user_id,
+            title=session.title,
             started_at=session.started_at,
             ended_at=session.ended_at,
             is_resolved_by_bot=session.is_resolved_by_bot,
@@ -78,12 +79,56 @@ class ChatService:
             ticket_id=session.ticket.id if session.ticket else None,
         )
 
-    async def create_session(self, current_user: AppUser) -> ChatSessionResponse:
-        session = ChatSession(user_id=current_user.id)
+    async def create_session(
+        self, current_user: AppUser, title: Optional[str] = None
+    ) -> ChatSessionResponse:
+        session = ChatSession(user_id=current_user.id, title=title)
         await self.chat_repo.create_session(session)
         await self.chat_repo.commit()
         await self.chat_repo.refresh(session)
         return self._session_to_response(session)
+
+    async def update_session(
+        self, session_id: uuid.UUID, current_user: AppUser, title: str
+    ) -> ChatSessionResponse:
+        session = await self.chat_repo.get_session_by_id(session_id)
+        if session is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy phiên chat",
+            )
+        if not can_access_chat_session(current_user, session):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền sửa phiên chat này",
+            )
+        clean_title = title.strip()
+        if not clean_title:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Tiêu đề đoạn chat không được để trống",
+            )
+        session.title = clean_title
+        await self.chat_repo.commit()
+        await self.chat_repo.refresh(session)
+        return self._session_to_response(session)
+
+    async def delete_session(
+        self, session_id: uuid.UUID, current_user: AppUser
+    ) -> None:
+        session = await self.chat_repo.get_session_by_id(session_id)
+        if session is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy phiên chat",
+            )
+        if not can_access_chat_session(current_user, session):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền xóa phiên chat này",
+            )
+        await self.chat_repo.delete_session(session)
+        await self.chat_repo.commit()
 
     async def get_session(
         self, session_id: uuid.UUID, current_user: AppUser
@@ -139,6 +184,9 @@ class ChatService:
             )
 
         # 1. Lưu tin nhắn của USER
+        if not session.title:
+            session.title = content.strip()[:60]
+
         user_msg = ChatMessage(
             chat_session_id=session.id,
             sender=MessageSender.USER,

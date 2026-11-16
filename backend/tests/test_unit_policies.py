@@ -8,7 +8,10 @@ from app.models.user import AppUser, UserRole
 from app.security.policies import (
     can_accept_or_update_ticket,
     can_approve_agent_action,
+    can_cancel_ticket,
     can_create_ticket,
+    can_delete_ticket,
+    can_edit_ticket,
     can_manage_categories,
     can_manage_department,
     can_manage_knowledge,
@@ -209,7 +212,9 @@ def test_admin_only_management_policies() -> None:
     dept_a = uuid.uuid4()
     dept_b = uuid.uuid4()
     manager = create_user(UserRole.DEPT_MANAGER, department_id=dept_a)
-    assert can_manage_categories(manager) is False
+    assert can_manage_categories(manager) is True
+    assert can_manage_categories(manager, target_dept_id=dept_a) is True
+    assert can_manage_categories(manager, target_dept_id=dept_b) is False
     assert can_manage_users(manager) is False
     assert can_manage_knowledge(manager) is True
     assert can_manage_knowledge(manager, target_dept_id=dept_a) is True
@@ -219,6 +224,29 @@ def test_admin_only_management_policies() -> None:
     assert can_manage_knowledge(admin) is True
     assert can_manage_knowledge(admin, target_dept_id=dept_b) is True
     assert can_manage_users(admin) is True
+
+
+def test_can_edit_delete_cancel_ticket() -> None:
+    student_a = create_user(UserRole.STUDENT)
+    student_b = create_user(UserRole.STUDENT)
+    admin = create_user(UserRole.ADMIN)
+
+    ticket = MockTicket(id=uuid.uuid4(), requester_id=student_a.id)
+
+    # Student A can edit and delete their own ticket
+    assert can_edit_ticket(student_a, ticket) is True
+    assert can_delete_ticket(student_a, ticket) is True
+    assert can_cancel_ticket(student_a, ticket) is True
+
+    # Student B cannot edit or delete Student A's ticket
+    assert can_edit_ticket(student_b, ticket) is False
+    assert can_delete_ticket(student_b, ticket) is False
+    assert can_cancel_ticket(student_b, ticket) is False
+
+    # Admin can edit, delete, and cancel any ticket
+    assert can_edit_ticket(admin, ticket) is True
+    assert can_delete_ticket(admin, ticket) is True
+    assert can_cancel_ticket(admin, ticket) is True
 
 
 def test_can_view_internal_comments() -> None:

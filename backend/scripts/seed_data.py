@@ -33,151 +33,151 @@ DEFAULT_SEED_PASSWORD = "Password123!"
 USERS_DATA = [
     # Quản trị viên hệ thống (ADMIN)
     {
-        "email": "admin@school.edu.vn",
+        "email": "admin@st.neu.edu.vn",
         "full_name": "Quản Trị Viên Hệ Thống (System Admin)",
         "role": UserRole.ADMIN,
         "dept_name": None,
     },
     {
-        "email": "admin.cntt@school.edu.vn",
+        "email": "admin.cntt@st.neu.edu.vn",
         "full_name": "Quản Trị Viên CNTT (Admin IT)",
         "role": UserRole.ADMIN,
         "dept_name": "Phòng Công nghệ Thông tin",
     },
     # Sinh viên chung (Người dùng tạo ticket & hỏi chatbot)
     {
-        "email": "student@school.edu.vn",
+        "email": "student@st.neu.edu.vn",
         "full_name": "Nguyễn Văn An (Sinh viên)",
         "role": UserRole.STUDENT,
         "dept_name": None,
     },
     # 1. Phòng Công nghệ Thông tin
     {
-        "email": "manager.cntt@school.edu.vn",
+        "email": "manager.cntt@st.neu.edu.vn",
         "full_name": "Nguyễn Văn Quản (Trưởng phòng CNTT)",
         "role": UserRole.DEPT_MANAGER,
         "dept_name": "Phòng Công nghệ Thông tin",
     },
     {
-        "email": "tech.cntt@school.edu.vn",
+        "email": "tech.cntt@st.neu.edu.vn",
         "full_name": "Trần Kỹ Thuật (Kỹ thuật viên CNTT)",
         "role": UserRole.TECHNICIAN,
         "dept_name": "Phòng Công nghệ Thông tin",
     },
     {
-        "email": "tech2.cntt@school.edu.vn",
+        "email": "tech2.cntt@st.neu.edu.vn",
         "full_name": "Lê Hỗ Trợ Mạng (Kỹ thuật viên CNTT)",
         "role": UserRole.TECHNICIAN,
         "dept_name": "Phòng Công nghệ Thông tin",
     },
     {
-        "email": "staff.cntt@school.edu.vn",
+        "email": "staff.cntt@st.neu.edu.vn",
         "full_name": "Phạm Cán Bộ (Chuyên viên CNTT)",
         "role": UserRole.STAFF,
         "dept_name": "Phòng Công nghệ Thông tin",
     },
     {
-        "email": "student.cntt@school.edu.vn",
+        "email": "student.cntt@st.neu.edu.vn",
         "full_name": "Hoàng Sinh Viên (SV Khoa CNTT)",
         "role": UserRole.STUDENT,
         "dept_name": "Phòng Công nghệ Thông tin",
     },
     # 2. Phòng Đào tạo
     {
-        "email": "manager.daotao@school.edu.vn",
+        "email": "manager.daotao@st.neu.edu.vn",
         "full_name": "Trần Văn Đào (Trưởng phòng Đào tạo)",
         "role": UserRole.DEPT_MANAGER,
         "dept_name": "Phòng Đào tạo",
     },
     {
-        "email": "tech.daotao@school.edu.vn",
+        "email": "tech.daotao@st.neu.edu.vn",
         "full_name": "Vũ Kỹ Thuật Điểm (Kỹ thuật viên Đào tạo)",
         "role": UserRole.TECHNICIAN,
         "dept_name": "Phòng Đào tạo",
     },
     {
-        "email": "staff.daotao@school.edu.vn",
+        "email": "staff.daotao@st.neu.edu.vn",
         "full_name": "Hoàng Thị Giáo Vụ (Chuyên viên Đào tạo)",
         "role": UserRole.STAFF,
         "dept_name": "Phòng Đào tạo",
     },
     {
-        "email": "student.daotao@school.edu.vn",
+        "email": "student.daotao@st.neu.edu.vn",
         "full_name": "Đặng Sinh Viên (SV Đăng ký học phần)",
         "role": UserRole.STUDENT,
         "dept_name": "Phòng Đào tạo",
     },
     # 3. Phòng Công tác Sinh viên
     {
-        "email": "manager.ctsv@school.edu.vn",
+        "email": "manager.ctsv@st.neu.edu.vn",
         "full_name": "Lê Thị Tâm (Trưởng phòng CTSV)",
         "role": UserRole.DEPT_MANAGER,
         "dept_name": "Phòng Công tác Sinh viên",
     },
     {
-        "email": "tech.ctsv@school.edu.vn",
+        "email": "tech.ctsv@st.neu.edu.vn",
         "full_name": "Đặng Kỹ Thuật KTX (Kỹ thuật viên KTX)",
         "role": UserRole.TECHNICIAN,
         "dept_name": "Phòng Công tác Sinh viên",
     },
     {
-        "email": "staff.ctsv@school.edu.vn",
+        "email": "staff.ctsv@st.neu.edu.vn",
         "full_name": "Ngô Cán Bộ Học Bổng (Chuyên viên Học bổng)",
         "role": UserRole.STAFF,
         "dept_name": "Phòng Công tác Sinh viên",
     },
     {
-        "email": "student.ctsv@school.edu.vn",
+        "email": "student.ctsv@st.neu.edu.vn",
         "full_name": "Bùi Sinh Viên (SV Xin xác nhận & Học bổng)",
         "role": UserRole.STUDENT,
         "dept_name": "Phòng Công tác Sinh viên",
     },
     # 4. Phòng Cơ sở Vật chất
     {
-        "email": "manager.csvc@school.edu.vn",
+        "email": "manager.csvc@st.neu.edu.vn",
         "full_name": "Phạm Quốc Cơ (Trưởng phòng CSVC)",
         "role": UserRole.DEPT_MANAGER,
         "dept_name": "Phòng Cơ sở Vật chất",
     },
     {
-        "email": "tech.csvc@school.edu.vn",
+        "email": "tech.csvc@st.neu.edu.vn",
         "full_name": "Bùi Văn Điện Nước (Kỹ thuật viên Điện nước)",
         "role": UserRole.TECHNICIAN,
         "dept_name": "Phòng Cơ sở Vật chất",
     },
     {
-        "email": "staff.csvc@school.edu.vn",
+        "email": "staff.csvc@st.neu.edu.vn",
         "full_name": "Đinh Thị Thiết Bị (Chuyên viên CSVC)",
         "role": UserRole.STAFF,
         "dept_name": "Phòng Cơ sở Vật chất",
     },
     {
-        "email": "student.csvc@school.edu.vn",
+        "email": "student.csvc@st.neu.edu.vn",
         "full_name": "Trịnh Sinh Viên (SV Báo hỏng thiết bị)",
         "role": UserRole.STUDENT,
         "dept_name": "Phòng Cơ sở Vật chất",
     },
     # 5. Phòng Kế hoạch & Tài chính
     {
-        "email": "manager.kttc@school.edu.vn",
+        "email": "manager.kttc@st.neu.edu.vn",
         "full_name": "Đỗ Kế Toán (Trưởng phòng KHTC)",
         "role": UserRole.DEPT_MANAGER,
         "dept_name": "Phòng Kế hoạch & Tài chính",
     },
     {
-        "email": "tech.kttc@school.edu.vn",
+        "email": "tech.kttc@st.neu.edu.vn",
         "full_name": "Phan Kỹ Thuật Hóa Đơn (Kỹ thuật viên KHTC)",
         "role": UserRole.TECHNICIAN,
         "dept_name": "Phòng Kế hoạch & Tài chính",
     },
     {
-        "email": "staff.kttc@school.edu.vn",
+        "email": "staff.kttc@st.neu.edu.vn",
         "full_name": "Trịnh Thu Ngân (Chuyên viên Thu học phí)",
         "role": UserRole.STAFF,
         "dept_name": "Phòng Kế hoạch & Tài chính",
     },
     {
-        "email": "student.kttc@school.edu.vn",
+        "email": "student.kttc@st.neu.edu.vn",
         "full_name": "Dương Sinh Viên (SV Nộp học phí)",
         "role": UserRole.STUDENT,
         "dept_name": "Phòng Kế hoạch & Tài chính",
@@ -188,27 +188,27 @@ DEPARTMENTS_DATA = [
     {
         "name": "Phòng Công nghệ Thông tin",
         "description": "Quản lý hạ tầng mạng, máy tính, tài khoản email trường, cổng thông tin sinh viên và bản quyền phần mềm.",
-        "email": "cntt@school.edu.vn",
+        "email": "cntt@st.neu.edu.vn",
     },
     {
         "name": "Phòng Đào tạo",
         "description": "Quản lý chương trình đào tạo, đăng ký học phần, thời khoá biểu, điểm số, phúc khảo và cấp phát bằng tốt nghiệp.",
-        "email": "daotao@school.edu.vn",
+        "email": "daotao@st.neu.edu.vn",
     },
     {
         "name": "Phòng Công tác Sinh viên",
         "description": "Chăm lo đời sống sinh viên, xét cấp học bổng, quản lý ký túc xá, cấp giấy xác nhận và hỗ trợ việc làm.",
-        "email": "ctsv@school.edu.vn",
+        "email": "ctsv@st.neu.edu.vn",
     },
     {
         "name": "Phòng Cơ sở Vật chất",
         "description": "Quản lý, bảo trì hệ thống giảng đường, phòng thí nghiệm, điều hoà, điện nước và trang thiết bị âm thanh máy chiếu.",
-        "email": "csvc@school.edu.vn",
+        "email": "csvc@st.neu.edu.vn",
     },
     {
         "name": "Phòng Kế hoạch & Tài chính",
         "description": "Thu học phí, cấp hoá đơn điện tử, xử lý hoàn phí rút học phần và thanh toán các chế độ chính sách sinh viên.",
-        "email": "kttc@school.edu.vn",
+        "email": "kttc@st.neu.edu.vn",
     },
 ]
 
@@ -596,7 +596,7 @@ async def seed_users(
                 dept = Department(
                     name=dept_name,
                     description=f"Bộ phận {dept_name}",
-                    email=f"{_slugify(dept_name)}@school.edu.vn",
+                    email=f"{_slugify(dept_name)}@st.neu.edu.vn",
                     is_active=True,
                 )
                 session.add(dept)
@@ -661,7 +661,7 @@ async def seed_users(
             )
             existing = (await session.execute(check_stmt)).scalars().first()
             if existing is None:
-                auto_email = f"{prefix}.{slug}@school.edu.vn"
+                auto_email = f"{prefix}.{slug}@st.neu.edu.vn"
                 user_res = await session.execute(
                     select(AppUser).where(func.lower(AppUser.email) == auto_email)
                 )

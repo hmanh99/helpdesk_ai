@@ -11,6 +11,7 @@ from app.schemas.chat import (
     ChatSessionResponse,
     FeedbackRequest,
     SendMessageRequest,
+    UpdateChatSessionRequest,
 )
 from app.schemas.ticket import TicketCreate, TicketResponse
 
@@ -24,6 +25,28 @@ async def create_session(
 ) -> ChatSessionResponse:
     """Tạo mới một phiên hội thoại chat."""
     return await chat_service.create_session(current_user)
+
+
+@router.patch("/sessions/{id}", response_model=ChatSessionResponse)
+async def update_session(
+    current_user: CurrentUserDep,
+    id: uuid.UUID,
+    body: UpdateChatSessionRequest,
+    chat_service: ChatServiceDep,
+) -> ChatSessionResponse:
+    """Đổi tên đoạn chat."""
+    return await chat_service.update_session(id, current_user, body.title)
+
+
+@router.delete("/sessions/{id}", status_code=status.HTTP_200_OK)
+async def delete_session(
+    current_user: CurrentUserDep,
+    id: uuid.UUID,
+    chat_service: ChatServiceDep,
+) -> dict[str, str]:
+    """Xóa đoạn chat."""
+    await chat_service.delete_session(id, current_user)
+    return {"message": "Xóa đoạn chat thành công"}
 
 
 @router.get("/sessions", response_model=list[ChatSessionResponse])

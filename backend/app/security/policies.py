@@ -122,6 +122,51 @@ def can_accept_or_update_ticket(user: AppUser, ticket: Any) -> bool:
     return False
 
 
+def can_edit_ticket(user: AppUser, ticket: Any) -> bool:
+    """Kiểm tra quyền chỉnh sửa ticket (tiêu đề, nội dung, danh mục, ưu tiên):
+    - ADMIN: Toàn quyền.
+    - Người gửi yêu cầu (requester - sinh viên): Có quyền sửa phiếu do chính mình tạo.
+    """
+    if not user.is_active:
+        return False
+
+    if user.role == UserRole.ADMIN:
+        return True
+
+    requester_id = getattr(ticket, "requester_id", None)
+    return bool(requester_id and user.id and str(requester_id) == str(user.id))
+
+
+def can_delete_ticket(user: AppUser, ticket: Any) -> bool:
+    """Kiểm tra quyền xóa ticket:
+    - ADMIN: Toàn quyền.
+    - Người gửi yêu cầu (requester - sinh viên): Có quyền xóa phiếu do chính mình tạo.
+    """
+    if not user.is_active:
+        return False
+
+    if user.role == UserRole.ADMIN:
+        return True
+
+    requester_id = getattr(ticket, "requester_id", None)
+    return bool(requester_id and user.id and str(requester_id) == str(user.id))
+
+
+def can_cancel_ticket(user: AppUser, ticket: Any) -> bool:
+    """Kiểm tra quyền hủy ticket:
+    - ADMIN, DEPT_MANAGER, TECHNICIAN có quyền cập nhật ticket.
+    - Người gửi yêu cầu (requester - sinh viên) có quyền hủy phiếu do mình tạo.
+    """
+    if not user.is_active:
+        return False
+
+    if can_accept_or_update_ticket(user, ticket):
+        return True
+
+    requester_id = getattr(ticket, "requester_id", None)
+    return bool(requester_id and user.id and str(requester_id) == str(user.id))
+
+
 def can_reassign_ticket(user: AppUser, ticket: Any) -> bool:
     """Kiểm tra quyền phân công lại ticket: DEPT_MANAGER (trong phòng ban mình) hoặc ADMIN."""
     if not user.is_active:
@@ -164,9 +209,28 @@ def can_approve_agent_action(user: AppUser, action_or_dept_id: Any) -> bool:
     return dept_id is not None and u_dept_str is not None and str(dept_id) == u_dept_str
 
 
-def can_manage_categories(user: AppUser) -> bool:
-    """Kiểm tra quyền quản lý danh mục: Chỉ ADMIN."""
-    return bool(user.is_active and user.role == UserRole.ADMIN)
+def can_manage_categories(
+    user: AppUser, target_dept_id: Optional[uuid.UUID | str] = None
+) -> bool:
+    """Kiểm tra quyền quản lý danh mục:
+    - ADMIN: Toàn quyền trên mọi phòng ban.
+    - DEPT_MANAGER: Có quyền thêm/sửa/xóa danh mục trong phòng ban của mình.
+    - Các vai trò khác: Không có quyền.
+    """
+    if not user.is_active:
+        return False
+
+    if user.role == UserRole.ADMIN:
+        return True
+
+    if user.role == UserRole.DEPT_MANAGER:
+        if target_dept_id is None:
+            return True
+        if user.department_id is None:
+            return False
+        return str(user.department_id) == str(target_dept_id)
+
+    return False
 
 
 def can_manage_knowledge(

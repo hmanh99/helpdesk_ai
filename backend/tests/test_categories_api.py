@@ -141,3 +141,73 @@ async def test_admin_update_and_delete_category(
     get_res = await client.get(f"/api/v1/categories/{cat_id}", headers=headers)
     assert get_res.status_code == 404
 
+
+@pytest.mark.asyncio
+async def test_manager_create_and_update_and_delete_category_own_dept(
+    client: AsyncClient,
+    dept_manager_a: AppUser,
+    dept_a: Department,
+) -> None:
+    headers = auth_headers_for(dept_manager_a)
+
+    # Manager can create category for own department
+    create_res = await client.post(
+        "/api/v1/categories",
+        json={"name": "Manager Cat", "department_id": str(dept_a.id)},
+        headers=headers,
+    )
+    assert create_res.status_code == 201
+    cat_id = create_res.json()["id"]
+
+    # Manager can update category in own department
+    patch_res = await client.patch(
+        f"/api/v1/categories/{cat_id}",
+        json={"name": "Manager Cat Updated"},
+        headers=headers,
+    )
+    assert patch_res.status_code == 200
+    assert patch_res.json()["name"] == "Manager Cat Updated"
+
+    # Manager can delete category in own department
+    del_res = await client.delete(f"/api/v1/categories/{cat_id}", headers=headers)
+    assert del_res.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_manager_cannot_manage_category_in_other_dept(
+    client: AsyncClient,
+    dept_manager_a: AppUser,
+    dept_b: Department,
+    admin_user: AppUser,
+) -> None:
+    headers_mgr = auth_headers_for(dept_manager_a)
+    headers_admin = auth_headers_for(admin_user)
+
+    # Manager cannot create category for another department
+    create_res = await client.post(
+        "/api/v1/categories",
+        json={"name": "Illegal Cat", "department_id": str(dept_b.id)},
+        headers=headers_mgr,
+    )
+    assert create_res.status_code == 403
+
+    # Admin creates category in dept B
+    admin_create = await client.post(
+        "/api/v1/categories",
+        json={"name": "Dept B Cat", "department_id": str(dept_b.id)},
+        headers=headers_admin,
+    )
+    cat_b_id = admin_create.json()["id"]
+
+    # Manager of dept A cannot update category in dept B
+    patch_res = await client.patch(
+        f"/api/v1/categories/{cat_b_id}",
+        json={"name": "Hacked Name"},
+        headers=headers_mgr,
+    )
+    assert patch_res.status_code == 403
+
+    # Manager of dept A cannot delete category in dept B
+    del_res = await client.delete(f"/api/v1/categories/{cat_b_id}", headers=headers_mgr)
+    assert del_res.status_code == 403
+

@@ -59,6 +59,9 @@ class ChatRepository(BaseRepository):
         self.db.add(session)
         return session
 
+    async def delete_session(self, session: ChatSession) -> None:
+        await self.db.delete(session)
+
     async def add_message(self, message: ChatMessage) -> ChatMessage:
         self.db.add(message)
         return message

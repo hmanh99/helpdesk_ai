@@ -24,10 +24,14 @@ from app.schemas.ticket import (
     TicketHistoryResponse,
     TicketResponse,
     TicketStatusUpdateRequest,
+    TicketUpdate,
 )
 from app.security.policies import (
     can_accept_or_update_ticket,
+    can_cancel_ticket,
     can_create_ticket,
+    can_delete_ticket,
+    can_edit_ticket,
     can_reassign_ticket,
     can_view_internal_comments,
     can_view_ticket,
@@ -379,10 +383,12 @@ class TicketService:
         assert refreshed is not None
         return self._to_response(refreshed, current_user)
 
-    async def update_status(
-        self, ticket_id: uuid.UUID, body: TicketStatusUpdateRequest, current_user: AppUser
+    async def update_ticket(
+        self, ticket_id: uuid.UUID, body: TicketUpdate, current_user: AppUser
     ) -> TicketResponse:
-        """Cán bộ phòng ban cập nhật trạng thái phiếu hỗ trợ (Đang xử lý, Chờ SV phản hồi, Đã giải quyết, Đóng, Hủy)."""
+        """Chỉnh sửa thông tin phiếu hỗ trợ (tiêu đề, nội dung, danh mục, mức ưu tiên).
+        Dành cho người tạo phiếu (sinh viên) hoặc Quản trị viên (ADMIN).
+        """
         ticket = await self.ticket_repo.get_by_id(ticket_id)
         if ticket is None:
             raise HTTPException(
@@ -390,18 +396,112 @@ class TicketService:
                 detail="Không tìm thấy phiếu hỗ trợ",
             )
 
-        if not can_accept_or_update_ticket(current_user, ticket):
+        if not can_edit_ticket(current_user, ticket):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Bạn không có quyền cập nhật trạng thái phiếu hỗ trợ này",
+                detail="Bạn không có quyền chỉnh sửa phiếu hỗ trợ này",
             )
+
+        changes = []
+        if body.title is not None and body.title.strip() != ticket.title:
+            changes.append("tiêu đề")
+            ticket.title = body.title.strip()
+
+        if body.description is not None and body.description.strip() != ticket.description:
+            changes.append("nội dung mô tả")
+            ticket.description = body.description.strip()
+
+        if body.priority is not None and body.priority != ticket.priority:
+            changes.append(f"mức ưu tiên sang {body.priority.value}")
+            ticket.priority = body.priority
+
+        if body.category_id is not None and body.category_id != ticket.category_id:
+            category = await self.category_repo.get_by_id(body.category_id)
+            if category is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Danh mục được chỉ định không tồn tại",
+                )
+            ticket.category_id = category.id
+            ticket.department_id = category.department_id
+            dept_name = category.department.name if category.department else ""
+            changes.append(f"danh mục sang '{category.name}' ({dept_name})")
+
+        if changes:
+            history = TicketHistory(
+                ticket_id=ticket.id,
+                changed_by=current_user.id,
+                actor=current_user,
+                old_status=ticket.status.value,
+                new_status=ticket.status.value,
+                note=f"{current_user.full_name} đã cập nhật {', '.join(changes)}",
+            )
+            ticket.histories.append(history)
+            await self.ticket_repo.add_history(history)
+            await self.ticket_repo.commit()
+
+        refreshed = await self.ticket_repo.get_by_id(ticket.id)
+        assert refreshed is not None
+        return self._to_response(refreshed, current_user)
+
+    async def delete_ticket(
+        self, ticket_id: uuid.UUID, current_user: AppUser
+    ) -> None:
+        """Xóa phiếu hỗ trợ.
+        Dành cho người tạo phiếu (sinh viên) hoặc Quản trị viên (ADMIN).
+        """
+        ticket = await self.ticket_repo.get_by_id(ticket_id)
+        if ticket is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy phiếu hỗ trợ",
+            )
+
+        if not can_delete_ticket(current_user, ticket):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền xóa phiếu hỗ trợ này",
+            )
+
+        await self.ticket_repo.delete_ticket(ticket)
+        await self.ticket_repo.commit()
+
+    async def update_status(
+        self, ticket_id: uuid.UUID, body: TicketStatusUpdateRequest, current_user: AppUser
+    ) -> TicketResponse:
+        """Cập nhật trạng thái phiếu hỗ trợ (Đang xử lý, Chờ SV phản hồi, Đã giải quyết, Hủy)."""
+        if body.status == TicketStatus.CLOSED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Trạng thái 'Đã đóng phiếu' không còn được sử dụng. Vui lòng chọn 'Đã giải quyết' (RESOLVED) hoặc 'Hủy phiếu' (CANCELLED).",
+            )
+
+        ticket = await self.ticket_repo.get_by_id(ticket_id)
+        if ticket is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy phiếu hỗ trợ",
+            )
+
+        if body.status == TicketStatus.CANCELLED:
+            if not can_cancel_ticket(current_user, ticket):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Bạn không có quyền hủy phiếu hỗ trợ này",
+                )
+        else:
+            if not can_accept_or_update_ticket(current_user, ticket):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Bạn không có quyền cập nhật trạng thái phiếu hỗ trợ này",
+                )
 
         old_status = ticket.status.value
         ticket.status = body.status
 
-        if body.status in (TicketStatus.RESOLVED, TicketStatus.CLOSED):
+        if body.status == TicketStatus.RESOLVED:
             ticket.resolved_at = datetime.now(timezone.utc)
-        elif body.status in (TicketStatus.IN_PROGRESS, TicketStatus.PENDING_USER, TicketStatus.ASSIGNED):
+        elif body.status in (TicketStatus.IN_PROGRESS, TicketStatus.PENDING_USER, TicketStatus.ASSIGNED, TicketStatus.CANCELLED):
             ticket.resolved_at = None
 
         history = TicketHistory(
@@ -410,7 +510,11 @@ class TicketService:
             actor=current_user,
             old_status=old_status,
             new_status=body.status.value,
-            note=body.note or f"Cập nhật trạng thái phiếu sang {body.status.value}",
+            note=body.note or (
+                f"{current_user.full_name} đã hủy phiếu hỗ trợ"
+                if body.status == TicketStatus.CANCELLED
+                else f"Cập nhật trạng thái phiếu sang {body.status.value}"
+            ),
         )
         ticket.histories.append(history)
         await self.ticket_repo.add_history(history)

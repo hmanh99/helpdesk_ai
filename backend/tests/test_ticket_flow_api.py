@@ -178,3 +178,115 @@ async def test_ticket_visibility_by_role(
     assert t1_id in adm_ids
     assert t2_id in adm_ids
 
+
+@pytest.mark.asyncio
+async def test_student_edit_and_delete_ticket(
+    client: AsyncClient,
+    student_user: AppUser,
+    staff_user: AppUser,
+    cat_it: Category,
+    cat_hr: Category,
+) -> None:
+    headers_st = auth_headers_for(student_user)
+    headers_other = auth_headers_for(staff_user)
+
+    # 1. Create ticket
+    create_res = await client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Bàn phím bị kẹt phím Enter",
+            "description": "Bàn phím cơ phòng thực hành bị liệt phím",
+            "category_id": str(cat_it.id),
+            "priority": "LOW",
+        },
+        headers=headers_st,
+    )
+    assert create_res.status_code == 201
+    ticket_id = create_res.json()["id"]
+
+    # 2. Other user cannot edit
+    forbidden_edit = await client.patch(
+        f"/api/v1/tickets/{ticket_id}",
+        json={"title": "Hacked title"},
+        headers=headers_other,
+    )
+    assert forbidden_edit.status_code == 403
+
+    # 3. Student can edit title, description, category, and priority
+    patch_res = await client.patch(
+        f"/api/v1/tickets/{ticket_id}",
+        json={
+            "title": "Bàn phím bị kẹt phím Enter và Space",
+            "description": "Bàn phím cơ phòng thực hành bị liệt phím Enter và Spacebar",
+            "category_id": str(cat_hr.id),
+            "priority": "HIGH",
+        },
+        headers=headers_st,
+    )
+    assert patch_res.status_code == 200
+    updated_data = patch_res.json()
+    assert updated_data["title"] == "Bàn phím bị kẹt phím Enter và Space"
+    assert updated_data["category_id"] == str(cat_hr.id)
+    assert updated_data["priority"] == "HIGH"
+
+    # 4. Other user cannot delete
+    forbidden_delete = await client.delete(
+        f"/api/v1/tickets/{ticket_id}",
+        headers=headers_other,
+    )
+    assert forbidden_delete.status_code == 403
+
+    # 5. Student can delete their own ticket
+    delete_res = await client.delete(
+        f"/api/v1/tickets/{ticket_id}",
+        headers=headers_st,
+    )
+    assert delete_res.status_code == 204
+
+    # 6. Verify ticket is deleted
+    get_res = await client.get(f"/api/v1/tickets/{ticket_id}", headers=headers_st)
+    assert get_res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_closed_status_disallowed_and_student_cancel(
+    client: AsyncClient,
+    student_user: AppUser,
+    tech_user_a: AppUser,
+    cat_it: Category,
+) -> None:
+    headers_st = auth_headers_for(student_user)
+    headers_tech = auth_headers_for(tech_user_a)
+
+    create_res = await client.post(
+        "/api/v1/tickets",
+        json={
+            "title": "Cần hỗ trợ reset mật khẩu email sinh viên",
+            "description": "Em bị quên mật khẩu portal sinh viên",
+            "category_id": str(cat_it.id),
+        },
+        headers=headers_st,
+    )
+    ticket_id = create_res.json()["id"]
+
+    # Technician accepts ticket
+    await client.post(f"/api/v1/tickets/{ticket_id}/accept", headers=headers_tech)
+
+    # Status CLOSED is disallowed
+    closed_res = await client.patch(
+        f"/api/v1/tickets/{ticket_id}/status",
+        json={"status": "CLOSED"},
+        headers=headers_tech,
+    )
+    assert closed_res.status_code == 400
+    assert "Đã đóng" in closed_res.json()["detail"]
+
+    # Student can cancel their own ticket
+    cancel_res = await client.patch(
+        f"/api/v1/tickets/{ticket_id}/status",
+        json={"status": "CANCELLED", "note": "Em đã tự nhớ lại mật khẩu"},
+        headers=headers_st,
+    )
+    assert cancel_res.status_code == 200
+    assert cancel_res.json()["status"] == "CANCELLED"
+

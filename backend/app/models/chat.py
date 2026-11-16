@@ -52,6 +52,10 @@ class ChatSession(Base):
         Boolean,
         nullable=True,
     )
+    title: Mapped[Optional[str]] = mapped_column(
+        sa.String(255),
+        nullable=True,
+    )
 
     # Relationships
     user: Mapped["AppUser"] = relationship(
