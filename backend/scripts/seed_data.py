@@ -182,6 +182,19 @@ USERS_DATA = [
         "role": UserRole.STUDENT,
         "dept_name": "Phòng Kế hoạch & Tài chính",
     },
+    # 6. Phòng Tổ chức - Cán bộ (Nhân sự)
+    {
+        "email": "manager.nhansu@st.neu.edu.vn",
+        "full_name": "Phạm Văn Nhân (Trưởng phòng Nhân sự)",
+        "role": UserRole.DEPT_MANAGER,
+        "dept_name": "Phòng Tổ chức - Cán bộ (Nhân sự)",
+    },
+    {
+        "email": "staff.nhansu@st.neu.edu.vn",
+        "full_name": "Lê Thị Cán Bộ (Chuyên viên Nhân sự)",
+        "role": UserRole.STAFF,
+        "dept_name": "Phòng Tổ chức - Cán bộ (Nhân sự)",
+    },
 ]
 
 DEPARTMENTS_DATA = [
@@ -209,6 +222,11 @@ DEPARTMENTS_DATA = [
         "name": "Phòng Kế hoạch & Tài chính",
         "description": "Thu học phí, cấp hoá đơn điện tử, xử lý hoàn phí rút học phần và thanh toán các chế độ chính sách sinh viên.",
         "email": "kttc@st.neu.edu.vn",
+    },
+    {
+        "name": "Phòng Tổ chức - Cán bộ (Nhân sự)",
+        "description": "Quản lý nhân sự, bổ nhiệm chức vụ, điều động cán bộ, quản lý hồ sơ nhân sự và phân quyền hệ thống.",
+        "email": "tccb@st.neu.edu.vn",
     },
 ]
 

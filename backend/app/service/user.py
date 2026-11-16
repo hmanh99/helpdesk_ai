@@ -15,7 +15,12 @@ from app.schemas.user import (
     UserResponse,
     UserUpdate,
 )
-from app.security.policies import can_access_user_data
+from app.security.policies import (
+    can_access_user_data,
+    can_edit_user_role,
+    can_manage_users,
+    is_hr_manager,
+)
 from app.service.audit import AuditService
 
 
@@ -41,8 +46,8 @@ class UserService:
         department_id: Optional[uuid.UUID] = None,
         is_active: Optional[bool] = None,
     ) -> list[UserResponse]:
-        """Xem danh sách người dùng. Chỉ dành cho quyền ADMIN."""
-        if current_user.role != UserRole.ADMIN:
+        """Xem danh sách người dùng. Dành cho quyền ADMIN hoặc Trưởng bộ phận nhân sự."""
+        if not can_manage_users(current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Không đủ quyền truy cập",
@@ -62,8 +67,8 @@ class UserService:
         user_id: uuid.UUID,
         current_user: AppUser,
     ) -> UserResponse:
-        """Lấy thông tin người dùng theo ID. Chỉ chính người dùng đó hoặc ADMIN mới có quyền truy cập."""
-        if not can_access_user_data(current_user, user_id):
+        """Lấy thông tin người dùng theo ID. Dành cho chính chủ, ADMIN hoặc Trưởng bộ phận nhân sự."""
+        if not (can_access_user_data(current_user, user_id) or can_manage_users(current_user)):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Không đủ quyền truy cập",
@@ -153,13 +158,7 @@ class UserService:
         current_user: AppUser,
         request: Optional[Request] = None,
     ) -> UserResponse:
-        """Cập nhật thông tin người dùng. Chỉ chính người dùng hoặc ADMIN mới có quyền."""
-        if not can_access_user_data(current_user, user_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Không đủ quyền truy cập",
-            )
-
+        """Cập nhật thông tin người dùng. ADMIN, Trưởng bộ phận nhân sự hoặc chính chủ."""
         target_user = await self.user_repo.get_by_id(user_id)
         if target_user is None:
             raise HTTPException(
@@ -168,14 +167,42 @@ class UserService:
             )
 
         fields_set = body.model_fields_set
+        is_hr = is_hr_manager(current_user)
 
-        # Nếu người dùng hiện tại không phải ADMIN, chỉ được phép sửa họ tên của mình
+        # Kiểm tra quyền truy cập cơ bản
+        if not (can_access_user_data(current_user, user_id) or is_hr):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Không đủ quyền truy cập",
+            )
+
+        # Xử lý phân quyền chi tiết theo vai trò
         if current_user.role != UserRole.ADMIN:
-            if "role" in fields_set or "department_id" in fields_set or "is_active" in fields_set:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Người dùng chỉ có thể chỉnh sửa họ tên của mình",
-                )
+            if is_hr:
+                # Trưởng bộ phận nhân sự được phép sửa chức vụ (role) và phòng ban (department_id)
+                if "is_active" in fields_set:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Trưởng bộ phận nhân sự không có quyền thay đổi trạng thái kích hoạt tài khoản",
+                    )
+                if "role" in fields_set and not can_edit_user_role(current_user, target_user, body.role):
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Trưởng bộ phận nhân sự không có quyền thay đổi chức vụ này hoặc tài khoản Quản trị viên",
+                    )
+                # Không cho phép HR sửa tài khoản ADMIN
+                if target_user.role == UserRole.ADMIN:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Trưởng bộ phận nhân sự không có quyền thay đổi thông tin của Quản trị viên hệ thống",
+                    )
+            else:
+                # Người dùng bình thường chỉ được phép sửa họ tên của mình
+                if "role" in fields_set or "department_id" in fields_set or "is_active" in fields_set:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Người dùng chỉ có thể chỉnh sửa họ tên của mình",
+                    )
 
         # Ràng buộc 1: ADMIN không thể tự vô hiệu hóa tài khoản của chính mình
         if target_user.id == current_user.id and body.is_active is False:
